@@ -14,5 +14,6 @@ user_data/*.sqlite
 evaluation/reports/*.json
 evaluation/reports/*.csv
 evaluation/reports/*.md
+static/data/toan_bo_du_lieu_final.json
 *.log
 tmp.txt
