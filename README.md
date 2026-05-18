@@ -1,26 +1,29 @@
 # Vietnamese eGov RAG Assistant
 
-Vietnamese eGov RAG Assistant is a Flask-based retrieval-augmented chatbot for Vietnamese administrative procedures. It uses the existing public-service dataset, hybrid retrieval, source-grounded generation, a web demo, Docker packaging, SQLite logging, and evaluation scripts.
+A production-ready Retrieval-Augmented Generation (RAG) chatbot for Vietnamese administrative procedures. Built with hybrid BM25 + FAISS retrieval, source-grounded Gemini generation, multi-turn conversation handling, and an automated FAQ-based evaluation pipeline.
 
-## Demo
+## Key Results
 
-Run locally and open:
+Evaluated on 74 real FAQ questions from the Vietnamese National Public Service Portal:
 
-```text
-http://localhost:7860
-```
+| Method | Recall@1 | Recall@5 | Recall@10 | MRR@10 | nDCG@10 |
+|--------|----------|----------|-----------|--------|---------|
+| BM25   | 0.7432   | 0.9054   | 0.9324    | 0.8220 | 0.8496  |
+| Dense  | 0.8514   | 0.9324   | 0.9324    | 0.8829 | 0.8953  |
+| Hybrid | 0.8514   | 0.9324   | **0.9459** | 0.8820 | **0.8975** |
 
-The public demo URL can be added here after deployment.
+> Full benchmark report: [`evaluation/reports/faq_latest_report.md`](evaluation/reports/faq_latest_report.md)
 
 ## Features
 
-- Hybrid retrieval over Vietnamese procedure data with FAISS, BM25, and fallback keyword search.
-- Source-grounded answers with source cards returned by `/chat`.
-- Multi-turn context for follow-up questions.
-- Server-side `/search`, `/feedback`, `/stats/popular`, and `/stats/feedback`.
-- SQLite query logs, feedback, and popular-procedure counters.
-- Docker and Docker Compose support.
-- Evaluation scripts for retrieval, source matching, generation checks, and latency.
+- **Hybrid retrieval** over 12,000+ Vietnamese procedures with FAISS dense search, BM25 sparse search, and keyword fallback.
+- **Source-grounded answers** with source cards and procedure links returned by `/chat`.
+- **Multi-turn context** for follow-up questions within a session.
+- **LLM-as-judge evaluation** for automated answer quality scoring (correctness, faithfulness, hallucination detection).
+- **Retrieval ablation** comparing BM25, Dense, and Hybrid modes.
+- **Latency profiling** with percentile reporting (p50/p90/p95/p99).
+- **SQLite logging** for queries, feedback, and popular-procedure counters.
+- **Docker** and Docker Compose support for deployment.
 
 ## Architecture
 
@@ -33,7 +36,7 @@ flowchart TD
     R --> D[FAISS Dense Search]
     R --> S[BM25 Sparse Search]
     R --> K[Keyword Fallback]
-    D --> F[Rank Fusion]
+    D --> F[Reciprocal Rank Fusion]
     S --> F
     K --> F
     F --> C[Context Builder]
@@ -42,26 +45,41 @@ flowchart TD
     API --> DB[(SQLite Logs & Feedback)]
 ```
 
-## Dataset
-
-The default data source is the Hugging Face dataset:
+## Project Structure
 
 ```text
-HungBB/egov-bot-data
+├── src/egov_bot/              # Core application
+│   ├── api/                   # Flask route blueprints
+│   ├── rag/                   # RAG pipeline, generation, prompt
+│   ├── retrieval/             # Hybrid retriever (FAISS + BM25 + RRF)
+│   ├── data/                  # Procedure store, resource loader
+│   ├── conversation/          # Session & follow-up detection
+│   ├── storage/               # SQLite DB layer
+│   ├── schemas/               # Data models
+│   └── utils/                 # Normalizer, cache, timing
+├── evaluation/                # FAQ benchmark pipeline
+│   ├── crawlers/              # FAQ data collection from DVC portal
+│   ├── utils/                 # Text normalization, title matching, JSONL I/O
+│   ├── testsets/              # Test data (JSONL)
+│   ├── reports/               # Generated benchmark reports
+│   ├── eval_retrieval_title.py    # Retrieval evaluation (title matching)
+│   ├── eval_generation_judge.py   # Generation evaluation (LLM-as-judge)
+│   ├── eval_latency_dataset.py    # Latency profiling
+│   └── run_faq_benchmark.py       # Full benchmark orchestrator
+├── scripts/                   # Dev utilities
+├── notebooks/                 # Data exploration notebooks
+├── docs/                      # Documentation & CV summary
+├── static/                    # CSS, JS, data
+├── templates/                 # HTML templates
+├── tests/                     # Unit tests
+├── app.py                     # WSGI entry point
+├── Dockerfile
+└── docker-compose.yml
 ```
 
-Expected files:
+## Quick Start
 
-```text
-index.faiss
-metas.pkl.gz
-bm25.pkl.gz
-toan_bo_du_lieu_final.json
-```
-
-The bundled frontend no longer downloads the 73MB JSON file in the browser. Search is handled by the backend.
-
-## Local Setup
+### Local Setup
 
 ```bash
 python -m venv .venv
@@ -74,69 +92,40 @@ source .venv/bin/activate
 
 pip install -r requirements.txt
 cp .env.example .env
-# edit .env and set GOOGLE_API_KEY
+# Edit .env and set GOOGLE_API_KEY
 python scripts/run_dev.py
 ```
 
-If `GOOGLE_API_KEY` is missing, the app still starts and returns a source extract fallback instead of Gemini-generated prose.
+Open `http://localhost:7860` in your browser.
 
-### Data and Cache Behavior
+> If `GOOGLE_API_KEY` is missing, the app still starts and returns source-extracted answers instead of Gemini-generated prose.
 
-The app does not load the 73MB JSON in the browser anymore. The backend loads
-procedure data, retrieval indexes, and the embedding model when the Flask process
-starts.
-
-With `DATA_SOURCE=hf`, startup calls Hugging Face's cache API for the expected
-resource files. If a file is already cached, it is reused; if it is missing, the
-app tries to download only that missing file. This means later startups may still
-show resource-loading logs, but they should not re-download files that are
-already present in `.cache`.
-
-To prefetch resources once:
-
-```bash
-python scripts/download_resources.py
-```
-
-To force cache-only startup after resources are present:
-
-```env
-HF_LOCAL_FILES_ONLY=true
-```
-
-For a fully local index, build the files into `.cache/egov_data` and switch to
-`DATA_SOURCE=local`:
-
-```bash
-python scripts/build_local_index.py --input static/data/toan_bo_du_lieu_final.json --output-dir .cache/egov_data
-```
-
-## Docker
-
-Docker is optional for development, but the project includes Docker packaging so
-the app can be run consistently on another machine or deployment platform.
+### Docker
 
 ```bash
 cp .env.example .env
-# edit .env and set GOOGLE_API_KEY
-docker build -t egov-bot .
-docker run --env-file .env -p 7860:7860 egov-bot
-```
-
-Or:
-
-```bash
+# Edit .env and set GOOGLE_API_KEY
 docker compose up --build
 ```
 
-The Compose setup mounts these host directories into the container:
+The Compose setup mounts `.cache` and `user_data` directories so cached models and logs persist across restarts.
 
-```text
-./.cache    -> /app/.cache      # Hugging Face/index/model cache
-./user_data -> /app/user_data   # SQLite logs, feedback, counters
-```
+## Dataset
 
-So the first run may download/cache resources, while later runs reuse them.
+Data is loaded from the Hugging Face dataset `DrPie/eGoV_Data`:
+
+| File | Purpose |
+|------|---------|
+| `index.faiss` | FAISS dense retrieval index |
+| `metas.pkl.gz` | Chunk metadata (titles, text, URLs) |
+| `bm25.pkl.gz` | Pre-built BM25 index |
+| `toan_bo_du_lieu_final.json` | Raw procedure data (12,361 records) |
+
+First startup downloads these files (~2.5GB total including the embedding model). Subsequent startups load from cache.
+
+To prefetch resources: `python scripts/download_resources.py`
+
+To use fully local data: `python scripts/build_local_index.py --input static/data/toan_bo_du_lieu_final.json --output-dir .cache/egov_data` and set `DATA_SOURCE=local` in `.env`.
 
 ## API Reference
 
@@ -146,33 +135,17 @@ Returns app status, resource-loading status, model availability, and version.
 
 ### `POST /chat`
 
-Request:
-
 ```json
-{
-  "question": "Đăng ký khai sinh cần giấy tờ gì?",
-  "session_id": "user-123"
-}
-```
+// Request
+{"question": "Đăng ký khai sinh cần giấy tờ gì?", "session_id": "user-123"}
 
-Response:
-
-```json
+// Response
 {
   "answer": "...",
-  "sources": [
-    {
-      "title": "Thủ tục đăng ký khai sinh",
-      "url": "https://...",
-      "agency": "...",
-      "score": 0.95,
-      "snippet": "..."
-    }
-  ],
+  "sources": [{"title": "...", "url": "...", "score": 0.95, "snippet": "..."}],
   "request_id": "...",
   "latency_ms": 1234,
-  "cached": false,
-  "context_source": "https://..."
+  "cached": false
 }
 ```
 
@@ -190,49 +163,31 @@ Clears in-memory conversation context for the provided `session_id`.
 
 ## Evaluation
 
-Build a testset:
+The evaluation pipeline uses FAQ questions crawled from the National Public Service Portal. See [evaluation/README.md](evaluation/README.md) for the full data collection and benchmarking workflow.
+
+### Running Benchmarks
 
 ```bash
-python evaluation/build_testset.py
+# Start API server (terminal 1)
+python scripts/run_dev.py
+
+# Run full benchmark (terminal 2)
+python evaluation/run_faq_benchmark.py \
+    --testset evaluation/testsets/dvc_faq_qa_500.jsonl \
+    --base-url http://localhost:7860 \
+    --generation-limit 50
+
+# Or run individual evaluations
+python evaluation/eval_retrieval_title.py --mode hybrid
+python evaluation/eval_generation_judge.py --base-url http://localhost:7860 --limit 50
+python evaluation/eval_latency_dataset.py --base-url http://localhost:7860 --limit 100
 ```
 
-Run all available checks:
-
-```bash
-python evaluation/run_all.py
-```
-
-Reports are written to:
-
-```text
-evaluation/reports/latest_metrics.json
-evaluation/reports/latest_report.md
-```
-
-API-based generation and latency checks require the local server to be running.
-
-## Local Index Rebuild
-
-The default mode uses the hosted index. To rebuild a local index:
-
-```bash
-python scripts/build_local_index.py --input static/data/toan_bo_du_lieu_final.json --output-dir .cache/egov_data
-```
-
-Then set:
-
-```env
-DATA_SOURCE=local
-DATA_DIR=.cache/egov_data
-```
+Reports are generated in `evaluation/reports/`.
 
 ## Limitations
 
 - Data may not reflect real-time changes from official portals.
 - The assistant is not a substitute for official legal or administrative guidance.
-- First startup can be slow because models and index files may need to download.
-- Free deployment platforms may cold-start or run out of memory when loading embedding models.
-
-## CV Summary
-
-Built a Dockerized Vietnamese e-government RAG chatbot with hybrid BM25 + FAISS retrieval, source-grounded Gemini generation, multi-turn follow-up handling, SQLite feedback/logging, a web demo, and automated evaluation across retrieval, source matching, OOD handling, and latency.
+- First startup can be slow (~2-5 min) due to model and index downloads.
+- Free-tier Gemini API has strict rate limits (20 req/day for 2.5-flash; use 1.5-flash for benchmarking).

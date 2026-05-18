@@ -1,4 +1,4 @@
-.PHONY: install dev smoke test lint eval docker-build docker-run docker-up
+.PHONY: install dev smoke test lint eval eval-retrieval eval-generation docker-build docker-run docker-up
 
 install:
 	pip install -r requirements-dev.txt
@@ -16,7 +16,13 @@ lint:
 	ruff check src tests evaluation scripts
 
 eval:
-	python evaluation/run_all.py
+	python evaluation/run_faq_benchmark.py
+
+eval-retrieval:
+	python evaluation/eval_retrieval_title.py --mode hybrid
+
+eval-generation:
+	python evaluation/eval_generation_judge.py --limit 100
 
 docker-build:
 	docker build -t egov-bot .
