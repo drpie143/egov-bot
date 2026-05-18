@@ -15,7 +15,6 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import json
 import math
 import sys
 import time
@@ -27,11 +26,12 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT))
 
+from evaluation.utils.jsonl_io import read_jsonl, write_json, write_jsonl  # noqa: E402
+from evaluation.utils.text_normalize import normalize_title  # noqa: E402
+
 from egov_bot.config import load_settings  # noqa: E402
 from egov_bot.data.resource_loader import load_resources  # noqa: E402
 from egov_bot.retrieval.hybrid_retriever import HybridRetriever  # noqa: E402
-from evaluation.utils.jsonl_io import read_jsonl, write_json, write_jsonl  # noqa: E402
-from evaluation.utils.text_normalize import normalize_title  # noqa: E402
 
 
 def get_result_title(result) -> str:

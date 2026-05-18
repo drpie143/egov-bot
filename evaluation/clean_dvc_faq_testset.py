@@ -132,7 +132,7 @@ def main() -> None:
                 "fuzzy_score": round(score, 2),
             })
 
-    print(f"\nTitle matching results:")
+    print("\nTitle matching results:")
     print(f"  Exact:     {stats['exact']}")
     print(f"  Fuzzy:     {stats['fuzzy']}")
     print(f"  Unmatched: {stats['none']}")

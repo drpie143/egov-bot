@@ -13,7 +13,6 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import json
 import statistics
 import sys
 import time
@@ -57,7 +56,7 @@ def main() -> None:
     # Benchmark
     latencies: list[float] = []
     errors = 0
-    print(f"\nRunning latency benchmark...")
+    print("\nRunning latency benchmark...")
 
     for i, sample in enumerate(samples):
         start = time.perf_counter()

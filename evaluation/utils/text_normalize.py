@@ -6,7 +6,6 @@ import html
 import re
 import unicodedata
 
-
 _SPACE_RE = re.compile(r"\s+")
 _PUNCT_RE = re.compile(r"[.,;:!?'\"\"\"''()\[\]{}]")
 

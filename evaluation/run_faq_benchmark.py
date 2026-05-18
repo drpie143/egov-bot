@@ -124,7 +124,7 @@ def main() -> None:
 
     # Step 7: Latency benchmark
     if not args.skip_latency and has_api:
-        print(f"\n[Step] Latency benchmark...")
+        print("\n[Step] Latency benchmark...")
         ok, output = run([
             sys.executable, "evaluation/eval_latency_dataset.py",
             "--base-url", base_url,
@@ -172,8 +172,8 @@ def _generate_report(latest: dict, retrieval_results: dict) -> list[str]:
         "",
         "## 1. Testset",
         "",
-        f"- Source: official FAQ-style questions from Vietnamese National Public Service Portal.",
-        f"- Final schema: `question`, `reference_answer`, `expected_procedure_title`.",
+        "- Source: official FAQ-style questions from Vietnamese National Public Service Portal.",
+        "- Final schema: `question`, `reference_answer`, `expected_procedure_title`.",
         f"- Testset path: `{latest['testset']}`",
         "- Note: FAQ answers are used as reference answers, not as retrieval corpus.",
         "",

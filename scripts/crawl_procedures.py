@@ -1,16 +1,16 @@
 
-# -*- coding: utf-8 -*-
-import time
 import json
 import os
+import time
+
+from bs4 import BeautifulSoup
 from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import NoSuchElementException, TimeoutException
 from selenium.webdriver.chrome.service import Service as ChromeService
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.ui import WebDriverWait
 from webdriver_manager.chrome import ChromeDriverManager
-from bs4 import BeautifulSoup
 
 # ==============================================================================
 # PHẦN 1: CÁC HÀM CHỨC NĂNG
@@ -116,7 +116,7 @@ def get_all_detail_links(driver, start_url):
         wait.until(EC.presence_of_element_located((By.ID, "table-main")))
         print(f"   Đã mở trang danh sách: {start_url}")
     except TimeoutException:
-        print(f"   Lỗi: Không thể tải trang danh sách trong thời gian chờ. Bỏ qua URL này.")
+        print("   Lỗi: Không thể tải trang danh sách trong thời gian chờ. Bỏ qua URL này.")
         return []
 
     page_count = 1
@@ -185,9 +185,9 @@ if __name__ == '__main__':
     all_procedures_data = []
     
     for name, start_url in TARGET_URLS.items():
-        print(f"\n========================================================")
+        print("\n========================================================")
         print(f"BẮT ĐẦU CÀO DỮ LIỆU CỦA: {name}")
-        print(f"========================================================")
+        print("========================================================")
 
         detail_links = get_all_detail_links(main_driver, start_url)
         if not detail_links:
@@ -224,7 +224,7 @@ if __name__ == '__main__':
     try:
         with open(FINAL_OUTPUT_FILE, 'w', encoding='utf-8') as f:
             json.dump(all_procedures_data, f, indent=4, ensure_ascii=False)
-        print(f"\nHOÀN TẤT!")
+        print("\nHOÀN TẤT!")
         print(f"Đã lưu thành công dữ liệu của {len(all_procedures_data)} thủ tục.")
         print(f"File kết quả: {os.path.abspath(FINAL_OUTPUT_FILE)}")
     except Exception as e:
